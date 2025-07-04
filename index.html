@@ -9,6 +9,30 @@
   </head>
   <body>
     <h1>World Clock</h1>
+     <p class="subtitle">Always know the time, anywhere</p>
+    </header>
+
+    <div class="controls">
+        <button id="toggleFormat">Toggle 12/24 Hour</button>
+        <button id="toggleMode">Toggle Day/Night Mode</button>
+        <div class="add-city-form">
+            <select id="citySelect">
+                <option value="">Select a city</option>
+                <option value="New York">New York</option>
+                <option value="London">London</option>
+                <option value="Tokyo">Tokyo</option>
+                <option value="Berlin">Berlin</option>
+                <option value="Sydney">Sydney</option>
+                <option value="Dubai">Dubai</option>
+                <option value="San Francisco">San Francisco</option>
+            </select>
+            <button id="addCity">Add City</button>
+        </div>
+    </div>
+
+    <div class="clock-container" id="clockContainer">
+        <!-- Clock cards will be added here by JavaScript -->
+    </div>
     <footer>
       This project was coded with ❤️ by Christina Ngoma  and is
       <a href="https://github.com/C-Ngoma/" target="_blank">
