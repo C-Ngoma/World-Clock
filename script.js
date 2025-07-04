@@ -1,149 +1,175 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Default cities
-    const defaultCities = [
-        { name: "San Francisco", timezone: "America/Los_Angeles" },
-        { name: "London", timezone: "Europe/London" },
-        { name: "Tokyo", timezone: "Asia/Tokyo" },
-        { name: "Berlin", timezone: "Europe/Berlin" }
+    // City database with timezones
+    const cityDatabase = {
+        "San Francisco": "America/Los_Angeles",
+        "London": "Europe/London",
+        "Tokyo": "Asia/Tokyo",
+        "Berlin": "Europe/Berlin",
+        "New York": "America/New_York",
+        "Sydney": "Australia/Sydney",
+        "Dubai": "Asia/Dubai",
+        "Paris": "Europe/Paris",
+        "Moscow": "Europe/Moscow",
+        "Beijing": "Asia/Shanghai"
+    };
+
+    // Initialize with default cities
+    let cities = JSON.parse(localStorage.getItem('worldClockCities')) || [
+        { name: "San Francisco", timezone: cityDatabase["San Francisco"] },
+        { name: "London", timezone: cityDatabase["London"] },
+        { name: "Tokyo", timezone: cityDatabase["Tokyo"] }
     ];
 
-    let cities = JSON.parse(localStorage.getItem('worldClockCities')) || defaultCities;
-    let is24HourFormat = false;
-    let isNightMode = false;
+    let is24HourFormat = localStorage.getItem('timeFormat') === '24';
+    let isNightMode = localStorage.getItem('nightMode') === 'true';
 
     // Initialize the clock
     function initClock() {
-        renderAllClocks();
-        setInterval(renderAllClocks, 1000);
+        updateClockDisplay();
+        setInterval(updateClockDisplay, 1000);
 
-        // Load settings from localStorage
-        is24HourFormat = localStorage.getItem('timeFormat') === '24';
-        isNightMode = localStorage.getItem('nightMode') === 'true';
+        // Apply saved settings
+        if (isNightMode) document.body.classList.add('night-mode');
         
-        if (isNightMode) {
-            document.body.classList.add('night-mode');
-        }
-
-        // Setup event listeners
+        // Event listeners
         document.getElementById('toggleFormat').addEventListener('click', toggleTimeFormat);
         document.getElementById('toggleMode').addEventListener('click', toggleNightMode);
         document.getElementById('addCity').addEventListener('click', addNewCity);
+        
+        // Populate city dropdown
+        const select = document.getElementById('citySelect');
+        Object.keys(cityDatabase).forEach(city => {
+            if (!cities.some(c => c.name === city)) {
+                const option = document.createElement('option');
+                option.value = city;
+                option.textContent = city;
+                select.appendChild(option);
+            }
+        });
     }
 
-    // Render all clock cards
-    function renderAllClocks() {
+    // Update all clock displays
+    function updateClockDisplay() {
         const container = document.getElementById('clockContainer');
         container.innerHTML = '';
-
+        
         cities.forEach(city => {
             const card = createClockCard(city);
             container.appendChild(card);
         });
     }
 
-    // Create a single clock card
+    // Create a clock card for a city
     function createClockCard(city) {
         const now = new Date();
-        const options = { 
-            timeZone: city.timezone,
-            weekday: 'short',
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: 'numeric',
+        const cityTime = new Date(now.toLocaleString('en-US', { timeZone: city.timezone }));
+        
+        // Date formatting
+        const dateOptions = { 
+            weekday: 'short', 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        };
+        const dateStr = cityTime.toLocaleDateString('en-US', dateOptions);
+        
+        // Time formatting
+        const timeOptions = {
+            hour: '2-digit',
+            minute: '2-digit',
             hour12: !is24HourFormat
         };
+        let timeStr = cityTime.toLocaleTimeString('en-US', timeOptions);
         
-        const dateTimeStr = now.toLocaleString('en-US', options);
-        const [dateStr, timeStr] = dateTimeStr.split(', ');
-        const [time, ampm] = timeStr.split(' ');
+        // For 24-hour format, remove AM/PM and ensure leading zeros
+        if (is24HourFormat) {
+            timeStr = timeStr.replace(/ AM| PM/, '');
+            if (timeStr.length === 7) { // Handle cases like "9:15" -> "09:15"
+                timeStr = '0' + timeStr;
+            }
+        }
+
+        // Determine if it's day or night (6am-6pm = day)
+        const hours = cityTime.getHours();
+        const isDayTime = hours >= 6 && hours < 18;
+        const weatherIcon = isDayTime ? '☀️' : '🌙';
+        const temp = getRandomTemp(city.name); // Simulated weather data
 
         const card = document.createElement('div');
-        card.className = 'clock-card';
-        
-        // Determine if it's day or night in this city
-        const hours = now.toLocaleString('en-US', { 
-            timeZone: city.timezone, 
-            hour: 'numeric', 
-            hour12: false 
-        });
-        const isNight = hours < 6 || hours >= 18;
-        if (isNight) card.classList.add('night');
-
+        card.className = `clock-card ${isDayTime ? '' : 'night'}`;
         card.innerHTML = `
             <div class="city-name">${city.name}</div>
             <div class="date">${dateStr}</div>
-            <div class="time">${time}${!is24HourFormat ? `<span class="ampm">${ampm}</span>` : ''}</div>
+            <div class="time">${timeStr}</div>
             <div class="day-night-indicator"></div>
             <div class="weather">
-                <span class="weather-icon">☀️</span>
-                <span class="weather-temp">72°F</span>
+                <span class="weather-icon">${weatherIcon}</span>
+                <span class="weather-temp">${temp}°F</span>
             </div>
             <button class="delete-btn" data-city="${city.name}">×</button>
         `;
 
-        // Add delete functionality
-        card.querySelector('.delete-btn').addEventListener('click', function() {
-            removeCity(city.name);
-        });
-
+        card.querySelector('.delete-btn').addEventListener('click', () => removeCity(city.name));
         return card;
     }
 
-    // Toggle between 12 and 24 hour format
+    // Helper function for simulated weather data
+    function getRandomTemp(cityName) {
+        const baseTemps = {
+            "San Francisco": 65,
+            "London": 55,
+            "Tokyo": 60,
+            "Berlin": 50,
+            "New York": 60,
+            "Sydney": 70,
+            "Dubai": 85,
+            "Paris": 55,
+            "Moscow": 45,
+            "Beijing": 58
+        };
+        return baseTemps[cityName] + Math.floor(Math.random() * 10) - 5;
+    }
+
     function toggleTimeFormat() {
         is24HourFormat = !is24HourFormat;
         localStorage.setItem('timeFormat', is24HourFormat ? '24' : '12');
-        renderAllClocks();
+        updateClockDisplay();
     }
 
-    // Toggle night mode
     function toggleNightMode() {
         isNightMode = !isNightMode;
         document.body.classList.toggle('night-mode');
         localStorage.setItem('nightMode', isNightMode);
     }
 
-    // Add a new city
     function addNewCity() {
-        const select = document.getElementById('citySelect');
-        const cityName = select.value;
-        
-        if (!cityName) return;
-
-        const timezones = {
-            'New York': 'America/New_York',
-            'London': 'Europe/London',
-            'Tokyo': 'Asia/Tokyo',
-            'Berlin': 'Europe/Berlin',
-            'Sydney': 'Australia/Sydney',
-            'Dubai': 'Asia/Dubai',
-            'San Francisco': 'America/Los_Angeles'
-        };
-
-        if (!cities.some(city => city.name === cityName)) {
+        const cityName = document.getElementById('citySelect').value;
+        if (cityName && cityDatabase[cityName] && !cities.some(c => c.name === cityName)) {
             cities.push({
                 name: cityName,
-                timezone: timezones[cityName]
+                timezone: cityDatabase[cityName]
             });
             saveCities();
-            renderAllClocks();
+            updateClockDisplay();
         }
     }
 
-    // Remove a city
     function removeCity(cityName) {
         cities = cities.filter(city => city.name !== cityName);
         saveCities();
-        renderAllClocks();
+        updateClockDisplay();
+        
+        // Add back to dropdown
+        const select = document.getElementById('citySelect');
+        const option = document.createElement('option');
+        option.value = cityName;
+        option.textContent = cityName;
+        select.appendChild(option);
     }
 
-    // Save cities to localStorage
     function saveCities() {
         localStorage.setItem('worldClockCities', JSON.stringify(cities));
     }
 
-    // Initialize the clock
     initClock();
 });
